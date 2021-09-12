@@ -1,4 +1,5 @@
 const moment = require('moment');
+const axios = require('axios');
 const con = require('../infrastructure/connection.js');
 
 class Schedule {
@@ -67,11 +68,14 @@ class Schedule {
 
     findById(id, res) {
         const sql = `SELECT * FROM agenda.tbschedules WHERE id=${id}`;
-        con.query(sql, (err, results) => {
+        con.query(sql, async(err, results) => {
             const schedule = results[0];
+            const cpf = schedule.parent;
             if (err) {
                 res.status(400).json(err);
             } else {
+                const { data } = await axios.get(`http://localhost:8082/${cpf}`);
+                schedule.parent = data;
                 res.status(200).json(schedule);
             }
         });
@@ -118,4 +122,4 @@ class Schedule {
 }
 
 
-module.exports = new Schedule;
+module.exports = new Schedule();
