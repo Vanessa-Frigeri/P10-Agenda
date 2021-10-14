@@ -1,39 +1,55 @@
 const moment = require('moment');
 const axios = require('axios');
-const con = require('../infrastructure/connection.js');
+const con = require('../infrastructure/database/connection.js');
+const repositorie = require('../repositories/schedule.js');
 
 class Schedule {
-    addSchedule(schedule, res) {
-        const dateCreate = moment().format('YYYY-MM-DD HH:mm:ss');
-        const dateInitial = moment(schedule.dateInitial, 'DD/MM/YYYY HH:mm:ss').format('YYYY-MM-DD HH:mm:ss');
-        const dateFinish = moment(schedule.dateFinish, 'DD/MM/YYYY HH:mm:ss').format('YYYY-MM-DD HH:mm:ss');
+    constructor() {
+        this.dateInitialIsValid = ({ dateInitial, dateCreate }) => moment(dateInitial).isSameOrAfter(dateCreate);
+        //this.dateFinishIsValid = ({dateFinish, dateInitial}) => moment(dateFinish).isSameOrAfter(dateInitial);
+        this.nameIsValid = (size) => size >= 3;
 
-        const dateInitialIsValid = moment(dateInitial).isSameOrAfter(dateCreate);
-        const dateFinishIsValid = moment(dateFinish).isSameOrAfter(dateInitial);
-        const nameIsValid = schedule.parent.length >= 3;
-
-        const validations = [{
+        this.validations = [{
                 name: 'dateInitial',
-                valid: dateInitialIsValid,
+                valid: this.dateInitialIsValid,
                 message: 'Data de Início deve ser maior ou igual a data atual'
             },
-            {
-                name: 'dateFinish',
-                valid: dateFinishIsValid,
-                message: 'Data de Fim deve ser maior ou igual a data Início'
-            },
+            // {
+            //     name: 'dateFinish',
+            //     valid: this.dateFinishIsValid,
+            //     message: 'Data de Fim deve ser maior ou igual a data Início'
+            // },
             {
                 name: 'parent',
-                valid: nameIsValid,
+                valid: this.nameIsValid,
                 message: 'Nome do responsável precisa ter pelo menos 3 caracteres'
             }
         ];
 
-        const errors = validations.filter(field => !field.valid);
-        const existError = errors.length;
+        this.valid = (params) => {
+            this.validations.filter(field => {
+                const { name } = field;
+                const param = params[name];
+                return !field.valid(param);
+            });
+        };
+    }
 
-        if (existError) {
-            res.status(400).json(errors);
+
+    addSchedule(schedule) {
+        const dateCreate = moment().format('YYYY-MM-DD HH:mm:ss');
+        const dateInitial = moment(schedule.dateInitial, 'DD/MM/YYYY HH:mm:ss').format('YYYY-MM-DD HH:mm:ss');
+        const dateFinish = moment(schedule.dateFinish, 'DD/MM/YYYY HH:mm:ss').format('YYYY-MM-DD HH:mm:ss');
+        const params = {
+            dates: { dateInitial, dateCreate },
+            parent: { size: schedule.parent.length }
+        };
+
+        const errors = this.valid(params);
+        const existsError = errors.length;
+
+        if (existsError) {
+            return new Promise((resolve, reject) => reject(errors));
         } else {
 
             const scheduleDate = {
@@ -43,27 +59,16 @@ class Schedule {
                 dateCreate
             };
 
-            const sql = 'INSERT INTO tbSchedules SET ?';
-
-            con.query(sql, scheduleDate, (err) => {
-                if (err) {
-                    res.status(400).json(err);
-                } else {
-                    res.status(201).json(schedule);
-                }
-            });
+            return repositorie.addSchedule(scheduleDate)
+                .then((results) => {
+                    const id = results.insertId;
+                    return ({...schedule, id });
+                });
         }
     }
 
-    listSchedule(res) {
-        const sql = 'SELECT * FROM agenda.tbschedules';
-        con.query(sql, (err, results) => {
-            if (err) {
-                res.status(400).json(err);
-            } else {
-                res.status(200).json(results);
-            }
-        });
+    listSchedule() {
+        return repositorie.listSchedule();
     }
 
     findById(id, res) {

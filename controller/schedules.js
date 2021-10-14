@@ -2,9 +2,20 @@ const moment = require('moment');
 const Schedule = require('../model/schedules.js');
 
 module.exports = app => {
-    app.get('/schedules', (req, res) => {
-        Schedule.listSchedule(res);
+    //adding new schedule    
+    app.post('/schedules', (req, res) => {
+        const schedule = req.body;
+        Schedule.addSchedule(schedule)
+            .then(scheduleCreated => res.status(201).json(scheduleCreated))
+            .catch(err => res.status(400).json(err));
     });
+    //listing schedules
+    app.get('/schedules', (req, res) => {
+        Schedule.listSchedule()
+            .then(results => res.json(results))
+            .catch(err => res.status(400).json(err));
+    });
+
 
     app.get('/schedules/id/:id', (req, res) => {
         const id = parseInt(req.params.id);
@@ -14,11 +25,6 @@ module.exports = app => {
     app.get('/schedules/dateInitial/:dateInitial', (req, res) => {
         const dateInitial = req.params.dateInitial;
         Schedule.findByDateInitial(dateInitial, res);
-    });
-
-    app.post('/schedules', (req, res) => {
-        const schedule = req.body;
-        Schedule.addSchedule(schedule, res);
     });
 
     app.patch('/schedules/id/:id', (req, res) => {
