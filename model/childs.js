@@ -1,5 +1,5 @@
-const con = require('../infrastructure/connection.js');
-const uploads = require('../archives/uploads.js');
+const con = require('../infrastructure/database/connection.js');
+const uploads = require('../infrastructure/archives/uploads.js');
 class Child {
     addChild(child, res) {
         const sql = 'INSERT INTO agenda.tbchild SET ?';
